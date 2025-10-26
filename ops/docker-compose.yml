@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: bahce_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: bahce
+      POSTGRES_USER: bahce
+      POSTGRES_PASSWORD: bahce
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bahce -d bahce"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: bahce_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: bahce_rabbit
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: bahce
+      RABBITMQ_DEFAULT_PASS: bahce
+
+  minio:
+    image: minio/minio:latest
+    container_name: bahce_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: bahce
+      MINIO_ROOT_PASSWORD: bahcebahce
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console UI
+    volumes:
+      - miniodata:/data
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  miniodata: {}
