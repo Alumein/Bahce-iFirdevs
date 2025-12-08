@@ -1,7 +1,6 @@
 package com.bahceifirdevs.v01.web.dto;
 
 import com.bahceifirdevs.v01.domain.Product;
-
 import java.math.BigDecimal;
 
 public record ProductDto(
@@ -12,9 +11,12 @@ public record ProductDto(
     Integer stock,
     Long categoryId,
     String categoryName,
-    String imageUrl
+    String imageUrl,
+    Double averageRating // YENİ ALAN
 ) {
-  public static ProductDto from(Product p) {
+  
+  // YENİ: Ortalama puanı da alan metot (Detay sayfası için)
+  public static ProductDto from(Product p, Double averageRating) {
     var cat = p.getCategory();
     return new ProductDto(
         p.getId(),
@@ -24,7 +26,14 @@ public record ProductDto(
         p.getStock(),
         (cat != null ? cat.getId() : null),
         (cat != null ? cat.getName() : null),
-        p.getImageUrl()
+        p.getImageUrl(),
+        averageRating
     );
+  }
+
+  // ESKİ: Sadece ürünü alan metot (Liste sayfaları için, puanı 0.0 varsayarız)
+  // Bu sayede liste sayfalarında N+1 sorgu performansı sorunu yaşamayız.
+  public static ProductDto from(Product p) {
+    return from(p, 0.0);
   }
 }

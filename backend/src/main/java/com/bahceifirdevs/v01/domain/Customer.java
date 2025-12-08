@@ -3,6 +3,9 @@ package com.bahceifirdevs.v01.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList; // YENİ
+import java.util.List; // YENİ
+
 @Entity @Table(name = "customers")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Customer extends BaseEntity {
@@ -18,4 +21,13 @@ public class Customer extends BaseEntity {
 
   @Column(nullable = false, length = 72) // bcrypt hash uzunluğu
   private String passwordHash;
+
+  @Column(nullable = false)
+  @Builder.Default
+  private boolean marketingAllowed = false;
+  
+  // YENİ: Müşterinin adres defteri
+  @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Builder.Default
+  private List<Address> addresses = new ArrayList<>();
 }

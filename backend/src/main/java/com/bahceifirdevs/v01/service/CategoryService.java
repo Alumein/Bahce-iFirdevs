@@ -1,4 +1,4 @@
-package com.bahceifirdevs.v01.service;
+package com.bahceifirdevs.v01.service; // <-- BU SATIR ÇOK ÖNEMLİ
 
 import com.bahceifirdevs.v01.domain.Category;
 import com.bahceifirdevs.v01.repository.CategoryRepository;

@@ -3,6 +3,7 @@ package com.bahceifirdevs.v01.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +27,9 @@ public class Order extends BaseEntity {
   // Ödeme/izleme
   @Column(length = 100, unique = true)
   private String paymentRef;
+  
+  private LocalDate deliveryDate;
+  private String deliveryTime;
 
   // Sipariş özeti
   @Column(nullable = false, precision = 12, scale = 2)
