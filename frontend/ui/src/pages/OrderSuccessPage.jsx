@@ -7,7 +7,8 @@ export default function OrderSuccessPage() {
     <div style={{ textAlign: 'center', padding: '50px' }}>
       <h2>Teşekkürler! 🎉</h2>
       <p>Siparişiniz başarıyla alındı.</p>
-      <p>Backend (RabbitMQ) şu anda (simüle) onay e-postanızı hazırlıyor olmalı.</p>
+      <p>E-postanıza bilgilendirme e-maili iletilmiştir.</p>
+      <p>Spam klasörünü kontrol etmeyi unutmayın.</p>
       <Link to="/">Anasayfaya Dön</Link>
     </div>
   );

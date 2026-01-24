@@ -1,9 +1,9 @@
 package com.bahceifirdevs.v01.web;
 
 import com.bahceifirdevs.v01.domain.Product;
-import com.bahceifirdevs.v01.repository.ReviewRepository; // YENİ
+import com.bahceifirdevs.v01.repository.ReviewRepository;
 import com.bahceifirdevs.v01.service.ProductService;
-import com.bahceifirdevs.v01.web.dto.*;
+import com.bahceifirdevs.v01.web.dto.*; // TÜM DTO'LARI BURADAN ÇEKİYORUZ
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,19 +20,17 @@ import java.util.List;
 public class ProductController {
 
   private final ProductService productService;
-  private final ReviewRepository reviewRepo; // YENİ: Puan hesaplamak için
+  private final ReviewRepository reviewRepo;
 
-  // ---- GET BY ID (GÜNCELLENDİ) ----
+  // ---- GET BY ID ----
   @GetMapping(value = "/{id}", produces = "application/json")
   public ProductDto getById(@PathVariable Long id) {
     var product = productService.getById(id);
-    // Puan ortalamasını hesapla
     Double avgRating = reviewRepo.getAverageRating(id);
-    // DTO'yu puanla birlikte oluştur
     return ProductDto.from(product, avgRating);
   }
 
-  // ---- LIST (AYNI - Puan 0.0 döner) ----
+  // ---- LIST ----
   @GetMapping(produces = "application/json")
   public List<ProductDto> list(@RequestParam(name = "categoryId", required = false) Long categoryId) {
     return (categoryId != null)
@@ -40,7 +38,7 @@ public class ProductController {
         : productService.listAllDto();
   }
 
-  // ---- PAGE (AYNI - Puan 0.0 döner) ----
+  // ---- PAGE ----
   @GetMapping(value = "/page", produces = "application/json")
   public PageResponse<ProductDto> page(
       @RequestParam(defaultValue = "0") int page,
@@ -66,27 +64,28 @@ public class ProductController {
     }
   }
 
-  // CREATE
+  // ---- CREATE ----
   @PostMapping(consumes = "application/json", produces = "application/json")
   public ProductDto create(@Valid @RequestBody ProductCreateRequest req) {
     var saved = productService.create(
         req.name(), req.shortDescription(), req.priceTry(),
-        req.stock(), req.categoryId(), req.imageUrl()
+        req.stock(), req.categoryId(), 
+        req.imageUrl(), req.imageUrl2(), req.imageUrl3()
     );
     return ProductDto.from(saved);
   }
 
-  // UPDATE
+  // ---- UPDATE ----
   @PutMapping(value = "/{id}", consumes = "application/json", produces = "application/json")
   public ProductDto update(@PathVariable Long id, @Valid @RequestBody ProductUpdateRequest req) {
     var saved = productService.update(
         id, req.name(), req.shortDescription(), req.priceTry(),
-        req.stock(), req.categoryId(), req.imageUrl()
+        req.stock(), req.categoryId(), 
+        req.imageUrl(), req.imageUrl2(), req.imageUrl3()
     );
     return ProductDto.from(saved);
   }
 
-  // DELETE
   @DeleteMapping("/{id}")
   public void delete(@PathVariable Long id) {
     productService.delete(id);

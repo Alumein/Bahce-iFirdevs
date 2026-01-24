@@ -28,8 +28,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: '450px', margin: '50px auto', padding: '30px', border: '1px solid #eee', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: '#fff' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '30px', color: 'var(--text-main)', fontFamily: 'var(--font-heading)' }}>Giriş Yap</h2>
+    <div style={{ maxWidth: '450px', margin: '50px auto', padding: '30px', border: '1px solid #eee', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: 'var(--bg-card)' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '30px', color: 'var(--primary)', fontFamily: 'var(--font-heading)' }}>Giriş Yap</h2>
       
       {error && (
         <div style={{ backgroundColor: '#FFEBEE', color: '#C62828', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', textAlign: 'center' }}>
@@ -66,7 +66,11 @@ export default function LoginPage() {
           {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
         </button>
       </form>
-
+      <div style={{textAlign:'right', marginBottom:'15px'}}>
+        <Link to="/forgot-password" style={{fontSize:'0.85rem', color:'#666'}}>
+          Şifremi Unuttum?
+        </Link>
+      </div>
       <div style={{ marginTop: '25px', textAlign: 'center', fontSize: '0.95rem', color: '#666' }}>
         Henüz hesabın yok mu?{' '}
         <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>

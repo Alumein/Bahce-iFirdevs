@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 const GUEST_CART_ID_KEY = 'guestCartId';
 
 const CartContext = createContext();

@@ -11,7 +11,7 @@ function parseJwt (token) {
     }
 }
 
-const API_URL = 'http://localhost:8080';
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 
 const AuthContext = createContext();
 
@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
       // KULLANICI MÜŞTERİ İSE:
       setIsAdmin(false);
       try {
-        const response = await axios.get(`${API_URL}/api/customers/me`);
+        const response = await axios.get(`${API_URL}/customers/me`);
         setUser(response.data); 
         return true;
       } catch (err) {
@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
   const register = async (fullName, email, phone, password) => {
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/api/customers/register`, {
+      await axios.post(`${API_URL}/customers/register`, {
         fullName, email, phone, password
       });
       alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");

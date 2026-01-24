@@ -50,11 +50,15 @@ public class CustomerService {
 
     try {
       CustomerEventDto event = new CustomerEventDto(saved.getId(), saved.getEmail(), saved.getFullName());
-      rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_NAME, RabbitConfig.ROUTING_KEY_CUSTOMER_REGISTERED, event);
+      rabbitTemplate.convertAndSend(
+            RabbitConfig.EXCHANGE_NAME, 
+            RabbitConfig.ROUTING_KEY_CUSTOMER_REGISTERED, 
+            event
+        );
     } catch (Exception e) {
       log.error("RabbitMQ hatası", e);
     }
-
+    
     return saved;
   }
 

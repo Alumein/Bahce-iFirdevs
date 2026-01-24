@@ -25,6 +25,13 @@ public class Product extends BaseEntity {
   @JoinColumn(name = "category_id")
   private Category category;
 
+  // --- RESİM ALANLARI (GÜNCELLENDİ) ---
   @Column(length = 255)
-  private String imageUrl; // opsiyonel: bir kapak görseli
+  private String imageUrl;  // Ana Resim (Kapak)
+
+  @Column(length = 255)
+  private String imageUrl2; // 2. Resim (Opsiyonel)
+
+  @Column(length = 255)
+  private String imageUrl3; // 3. Resim (Opsiyonel)
 }

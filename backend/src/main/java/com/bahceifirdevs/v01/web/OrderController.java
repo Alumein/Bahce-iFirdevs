@@ -171,4 +171,9 @@ public record CreateOrderRequest(
                             BigDecimal unitPriceTry, Integer quantity,
                             BigDecimal lineTotalTry) {}
   }
+  @DeleteMapping(value = "/{id}")
+  public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+    orderService.deleteOrder(id);
+    return ResponseEntity.noContent().build();
+  }
 }

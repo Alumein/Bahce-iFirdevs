@@ -1,30 +1,32 @@
 package com.bahceifirdevs.v01.web;
 
 import com.bahceifirdevs.v01.security.JwtService;
+import com.bahceifirdevs.v01.service.AuthService;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority; // YENİ
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.Map;
-import java.util.stream.Collectors; // YENİ
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
   // Birden fazla provider'ı (Admin ve Müşteri) yöneten Manager
   private final AuthenticationManager authManager;
   private final JwtService jwtService;
+  private final AuthService authService;
 
-  // 'refresh' için Admin ve Müşteri servislerine de ihtiyacımız var
   private final UserDetailsService customerUserDetailsService;
   private final UserDetailsService inMemoryAdmin;
 
@@ -79,4 +81,17 @@ public class AuthController {
       }
     }
   }
+  @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
+        authService.forgotPassword(email);
+        return ResponseEntity.ok("Doğrulama kodu e-posta adresinize gönderildi.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest req) {
+        authService.resetPassword(req.email(), req.code(), req.newPassword());
+        return ResponseEntity.ok("Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.");
+    }
+
+    public record ResetPasswordRequest(String email, String code, String newPassword) {}
 }

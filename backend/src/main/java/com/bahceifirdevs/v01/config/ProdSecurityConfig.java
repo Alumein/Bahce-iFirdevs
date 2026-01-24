@@ -94,11 +94,14 @@ public class ProdSecurityConfig {
             // Public (Herkes Erişebilir)
             .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
             .requestMatchers("/actuator/health", "/ping").permitAll()
-            .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/customers/register").permitAll() 
             .requestMatchers(HttpMethod.GET,  "/api/products/**", "/api/categories/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/products/{productId}/reviews").permitAll()
-            .requestMatchers("/api/cart/**").permitAll() // Sepet işlemleri açık (token zorunlu değil)
+            .requestMatchers("/api/cart/**").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/payment/callback").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/settings/**").permitAll()
 
             // KISITLI ALANLAR (Sadece Üyeler)
             // Sipariş vermek ve Ödeme yapmak için artık ÜYE olmak zorunlu:
@@ -139,7 +142,12 @@ public class ProdSecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:5173"));
+    config.setAllowedOrigins(List.of(
+        "http://localhost:5173",
+        "http://185.33.234.44",
+        "https://bahce-ifirdevs.com.tr",
+        "https://www.bahce-ifirdevs.com.tr"
+    ));
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
     config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Cart-ID"));
     config.setAllowCredentials(true); 

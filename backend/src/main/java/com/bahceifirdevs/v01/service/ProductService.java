@@ -6,7 +6,7 @@ import com.bahceifirdevs.v01.repository.CategoryRepository;
 import com.bahceifirdevs.v01.repository.ProductRepository;
 import com.bahceifirdevs.v01.web.dto.ProductDto;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Hibernate; // Bu import önemli
+import org.hibernate.Hibernate; 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -28,10 +28,8 @@ public class ProductService {
   @Cacheable(cacheNames = "product_details", key = "#id")
   @Transactional(readOnly = true)
   public Product getById(Long id) {
-    var p = repo.findById(id)
+    return repo.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("Ürün bulunamadı: " + id));
-    // Repository'de @EntityGraph eklediğimiz için burası artık güvende
-    return p;
   }
 
   // ---- LİSTELEME ----
@@ -61,12 +59,13 @@ public class ProductService {
     }
   }
 
-  // ---- CRUD (YENİ VE GÜNCELLENMİŞ) ----
+  // ---- CRUD (GÜNCELLENDİ: 3 Resim Destekli) ----
 
   @CacheEvict(cacheNames = {"products_all", "products_by_category", "product_details"}, allEntries = true)
   @Transactional
   public Product create(String name, String shortDescription, BigDecimal priceTry,
-                        Integer stock, Long categoryId, String imageUrl) {
+                        Integer stock, Long categoryId, 
+                        String imageUrl, String imageUrl2, String imageUrl3) { // YENİ PARAMETRELER
 
     Category categoryRef = getManagedCategory(categoryId);
 
@@ -77,11 +76,12 @@ public class ProductService {
         .stock(stock)
         .category(categoryRef)
         .imageUrl(imageUrl)
+        .imageUrl2(imageUrl2) // YENİ
+        .imageUrl3(imageUrl3) // YENİ
         .build();
 
     Product saved = repo.save(p);
     
-    // DÜZELTME: Kategoriyi proxy durumundan çıkarıp yüklüyoruz
     if (saved.getCategory() != null) {
         Hibernate.initialize(saved.getCategory());
     }
@@ -92,7 +92,8 @@ public class ProductService {
   @CacheEvict(cacheNames = {"products_all", "products_by_category", "product_details"}, allEntries = true)
   @Transactional
   public Product update(Long id, String name, String shortDescription, BigDecimal priceTry,
-                        Integer stock, Long categoryId, String imageUrl) {
+                        Integer stock, Long categoryId, 
+                        String imageUrl, String imageUrl2, String imageUrl3) { // YENİ PARAMETRELER
     var p = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Ürün bulunamadı: " + id));
 
     if (name != null && !name.isBlank()) p.setName(name);
@@ -103,12 +104,14 @@ public class ProductService {
     if (categoryId != null) {
       p.setCategory(getManagedCategory(categoryId));
     }
+    
+    // Resim güncellemeleri
     p.setImageUrl(imageUrl);
+    p.setImageUrl2(imageUrl2); // YENİ
+    p.setImageUrl3(imageUrl3); // YENİ
 
     Product saved = repo.save(p);
 
-    // DÜZELTME: Kategoriyi proxy durumundan çıkarıp yüklüyoruz
-    // Bu satır "500 Internal Server Error" hatasını çözer.
     if (saved.getCategory() != null) {
         Hibernate.initialize(saved.getCategory());
     }
@@ -123,14 +126,9 @@ public class ProductService {
     repo.deleteById(id);
   }
 
-  // ---- Helper ----
   private Category getManagedCategory(Long categoryId) {
-    if (categoryId == null) {
-      throw new IllegalArgumentException("Kategori zorunludur.");
-    }
-    if (!categoryRepo.existsById(categoryId)) {
-      throw new IllegalArgumentException("Kategori bulunamadı: " + categoryId);
-    }
+    if (categoryId == null) throw new IllegalArgumentException("Kategori zorunludur.");
+    if (!categoryRepo.existsById(categoryId)) throw new IllegalArgumentException("Kategori bulunamadı: " + categoryId);
     return categoryRepo.getReferenceById(categoryId);
   }
 }

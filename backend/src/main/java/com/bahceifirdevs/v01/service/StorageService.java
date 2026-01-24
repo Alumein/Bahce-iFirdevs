@@ -1,67 +1,53 @@
 package com.bahceifirdevs.v01.service;
 
-import io.minio.BucketExistsArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.SetBucketPolicyArgs;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class StorageService {
 
-  private final MinioClient minioClient;
+    // 1. Resimlerin sunucuda fiziksel olarak duracağı klasör
+    private final Path fileStorageLocation = Paths.get("/var/www/uploads");
 
-  @Value("${app.storage.minio.bucket}")
-  private String bucketName;
+    // 2. Tarayıcıda görünecek adresin başı (Domainin)
+    private final String baseUrl = "https://bahce-ifirdevs.com.tr/uploads/";
 
-  @Value("${app.storage.minio.endpoint}")
-  private String endpoint;
-
-  /**
-   * Dosyayı MinIO'ya yükler ve public URL'ini döner.
-   */
-  public String uploadImage(MultipartFile file) {
-    try {
-      // 1. Bucket var mı kontrol et, yoksa oluştur
-      boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
-      if (!found) {
-        minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-        // Bucket'ı public yap (resimler tarayıcıda görünsün diye)
-        String policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\",\"s3:ListBucketMultipartUploads\"],\"Resource\":[\"arn:aws:s3:::" + bucketName + "\"]},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]}]}";
-        minioClient.setBucketPolicy(SetBucketPolicyArgs.builder().bucket(bucketName).config(policy).build());
-      }
-
-      // 2. Benzersiz dosya adı oluştur
-      String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename().replace(" ", "_");
-
-      // 3. Yükle
-      try (InputStream inputStream = file.getInputStream()) {
-        minioClient.putObject(
-            PutObjectArgs.builder()
-                .bucket(bucketName)
-                .object(fileName)
-                .stream(inputStream, file.getSize(), -1)
-                .contentType(file.getContentType())
-                .build());
-      }
-
-      // 4. URL'i oluştur ve dön
-      // (localhost:9000/product-images/resim.jpg)
-      return endpoint + "/" + bucketName + "/" + fileName;
-
-    } catch (Exception e) {
-      log.error("Dosya yükleme hatası", e);
-      throw new RuntimeException("Resim yüklenemedi: " + e.getMessage());
+    public StorageService() {
+        try {
+            // Klasör yoksa oluştur
+            Files.createDirectories(this.fileStorageLocation);
+        } catch (Exception ex) {
+            throw new RuntimeException("Yükleme klasörü oluşturulamadı.", ex);
+        }
     }
-  }
+
+    public String uploadImage(MultipartFile file) {
+        // Dosya ismini temizle
+        String originalFileName = file.getOriginalFilename();
+        if (originalFileName == null) originalFileName = "image.jpg";
+
+        // Benzersiz isim yap (örn: 550e8400-resim.jpg)
+        String fileName = UUID.randomUUID().toString() + "-" + originalFileName.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
+        try {
+            // Hedef dosya yolu
+            Path targetLocation = this.fileStorageLocation.resolve(fileName);
+
+            // Dosyayı kaydet (Varsa üzerine yaz)
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+            // Geriye resmin tam internet adresini döndür
+            return baseUrl + fileName;
+
+        } catch (IOException ex) {
+            throw new RuntimeException("Dosya kaydedilemedi: " + fileName, ex);
+        }
+    }
 }

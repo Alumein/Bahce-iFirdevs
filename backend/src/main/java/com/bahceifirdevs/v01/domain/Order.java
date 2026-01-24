@@ -38,6 +38,9 @@ public class Order extends BaseEntity {
   @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
   @Builder.Default
   private List<OrderItem> items = new ArrayList<>();
+  
+  @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
   public void addItem(OrderItem item) {
     item.setOrder(this);

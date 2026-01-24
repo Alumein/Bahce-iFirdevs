@@ -1,0 +1,15 @@
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # SSL Doğrulama (AutoSSL) klasörüne dokunma, geçmesine izin ver
+  RewriteRule ^\.well-known/ - [L,NC]
+
+  # Diğer her şeyi React'e (index.html) yönlendir
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

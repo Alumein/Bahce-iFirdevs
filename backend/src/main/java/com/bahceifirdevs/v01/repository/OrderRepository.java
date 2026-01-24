@@ -31,6 +31,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
   BigDecimal findTotalRevenue();
 
   long countByCreatedAtAfter(Instant timestamp);
+  List<Order> findAllByStatusAndCreatedAtBefore(OrderStatus status, Instant createdAt);
 
   // === Yorum Yetki Sorgusu ===
   @Query("SELECT o FROM Order o JOIN o.items oi " +

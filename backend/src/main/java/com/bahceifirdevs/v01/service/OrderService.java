@@ -33,14 +33,9 @@ public class OrderService {
   private final OrderStatusHistoryRepository historyRepo;
   private final CustomerRepository customerRepo;
   private final RabbitTemplate rabbitTemplate;
+  private final ShippingService shippingService; // YENİ: Kargo Servisi Eklendi
 
-  // === 1. GÜVENLİ SİPARİŞ GETİRME (Detay, Geçmiş ve Not Güncelleme için) ===
-
-  /**
-   * Bir sipariş detayını veya geçmişini güvenli bir şekilde getirir.
-   * Kural: ADMIN her şeyi görebilir.
-   * Kural: CUSTOMER sadece kendi siparişini (buyerEmail eşleşirse) görebilir.
-   */
+  // === 1. GÜVENLİ SİPARİŞ GETİRME ===
   @Transactional(readOnly = true)
   public Order getOneOrderSecured(Long orderId, Authentication authentication) {
     if (authentication == null || !authentication.isAuthenticated()) {
@@ -56,23 +51,20 @@ public class OrderService {
 
     if (isAdmin) {
       initializeGraph(order);
-      return order; // Admin ise hemen döndür
+      return order;
     }
 
     String userEmail = authentication.getName();
     if (order.getBuyerEmail().equalsIgnoreCase(userEmail)) {
       initializeGraph(order);
-      return order; // Müşteri ve sipariş eşleşti
+      return order;
     }
 
     throw new AccessDeniedException("Bu siparişi görme yetkiniz yok.");
   }
 
-  // === 2. SİPARİŞ OLUŞTURMA (CREATE) ===
+  // === 2. SİPARİŞ OLUŞTURMA ===
 
-  /**
-   * Misafir (Guest) kullanıcısı için sipariş oluşturur.
-   */
   @Transactional
   public Order createOrder(String buyerName, String buyerEmail, String buyerPhone,
                            LocalDate deliveryDate, String deliveryTime,
@@ -100,9 +92,6 @@ public class OrderService {
     return processAndSaveOrder(order, items);
   }
 
-  /**
-   * Giriş yapmış Müşteri (Customer) için sipariş oluşturur.
-   */
   @Transactional
   public Order createOrderForCustomer(Authentication authentication,
                                       String addressLine, String city, String district, String notes,
@@ -118,8 +107,8 @@ public class OrderService {
         .orElseThrow(() -> new IllegalStateException("Kimliği doğrulanmış müşteri bulunamadı: " + email));
 
     Order order = Order.builder()
-        .customer(customer) // Siparişi hesaba bağla
-        .buyerName(customer.getFullName()) // Bilgileri hesaptan çek
+        .customer(customer)
+        .buyerName(customer.getFullName())
         .buyerEmail(customer.getEmail())
         .buyerPhone(customer.getPhone())
         .addressLine(addressLine) 
@@ -136,11 +125,12 @@ public class OrderService {
   }
 
   /**
-   * Hem Misafir hem de Müşteri siparişleri için ortak mantık (private metot).
+   * YENİ MANTIK: Kargo hesaplaması burada yapılıyor.
    */
   private Order processAndSaveOrder(Order order, List<ItemReq> items) {
-    BigDecimal total = BigDecimal.ZERO;
+    BigDecimal itemTotal = BigDecimal.ZERO;
 
+    // 1. Ürünlerin Fiyatını Hesapla ve Stoktan Düş
     for (ItemReq i : items) {
       var product = productRepo.findById(i.productId())
           .orElseThrow(() -> new IllegalArgumentException("Ürün bulunamadı: " + i.productId()));
@@ -154,61 +144,54 @@ public class OrderService {
 
       OrderItem oi = OrderItem.builder()
           .product(product)
-          .productName(product.getName()) // Snapshot
-          .unitPriceTry(product.getPriceTry()) // Snapshot
+          .productName(product.getName())
+          .unitPriceTry(product.getPriceTry())
           .quantity(i.quantity())
           .lineTotalTry(lineTotal)
           .build();
 
       order.addItem(oi); 
-      total = total.add(lineTotal);
+      itemTotal = itemTotal.add(lineTotal);
     }
 
-    order.setOrderTotalTry(total);
+    // 2. Kargo Ücretini Hesapla (YENİ)
+    BigDecimal shippingCost = shippingService.calculateShippingCost(itemTotal, order.getDistrict());
+
+    // 3. Toplam Tutara Kargoyu Ekle
+    BigDecimal finalTotal = itemTotal.add(shippingCost);
+    order.setOrderTotalTry(finalTotal);
+    
+    // (Opsiyonel: Eğer entity'de shippingCost alanı varsa buraya eklenebilir)
+    // order.setShippingCost(shippingCost);
+
     var saved = orderRepo.save(order); 
 
-    logStatusChange(saved, null, OrderStatus.PENDING, "Sipariş oluşturuldu. Not: " + (order.getNotes() != null ? "Var" : "Yok"));
+    String logNote = "Sipariş oluşturuldu. Kargo: " + shippingCost + " TL. " + (order.getNotes() != null ? "Not var." : "");
+    logStatusChange(saved, null, OrderStatus.PENDING, logNote);
 
     initializeGraph(saved);
     return saved;
   }
 
-  // === 3. SİPARİŞ NOTU GÜNCELLEME (YENİ) ===
-
+  // === 3. SİPARİŞ NOTU GÜNCELLEME ===
   @Transactional
   public void updateOrderNote(Long orderId, String newNote, Authentication authentication) {
-    // 1. Siparişi güvenli bir şekilde çek (Yetki kontrolü burada yapılır)
     Order order = getOneOrderSecured(orderId, authentication);
-
-    // 2. Durum Kontrolü
-    // Sadece PENDING, PAID veya PREPARING durumundaysa not değişebilir.
     Set<OrderStatus> editableStatuses = EnumSet.of(OrderStatus.PENDING, OrderStatus.PAID, OrderStatus.PREPARING);
-    
     if (!editableStatuses.contains(order.getStatus())) {
-      throw new IllegalStateException("Sipariş kargoya verildiği veya tamamlandığı için not güncellenemez.");
+      throw new IllegalStateException("Sipariş kargoya verildiği için not güncellenemez.");
     }
-
-    // 3. Notu Güncelle
     order.setNotes(newNote);
     orderRepo.save(order);
-    
-    log.info("Sipariş #{} notu müşteri tarafından güncellendi.", orderId);
   }
 
-  // === 4. SİPARİŞ LİSTELEME VE ARAMA ===
-
-  /**
-   * Admin Dashboard ve Müşteri Paneli için ortak arama metodu.
-   * Email verilirse filtreler, verilmezse tümünü getirir.
-   */
+  // === 4. ARAMA ===
   @Transactional(readOnly = true)
   public List<Order> searchOrders(String email) {
     List<Order> orders;
     if (email != null && !email.isBlank()) {
-      // Belirli bir e-postaya ait siparişler
       orders = orderRepo.findByBuyerEmailOrderByCreatedAtDesc(email);
     } else {
-      // Tüm siparişler (Admin için)
       orders = orderRepo.findAllByOrderByCreatedAtDesc();
     }
     orders.forEach(this::initializeGraph);
@@ -217,12 +200,7 @@ public class OrderService {
 
   public record ItemReq(Long productId, Integer quantity) {}
 
-  // === 5. DURUM GÜNCELLEME (RABBITMQ İLE) ===
-
-  /**
-   * Sipariş durumunu günceller.
-   * 'PAID' ve 'SHIPPED' durumlarında RabbitMQ'ya mesaj gönderir.
-   */
+  // === 5. DURUM GÜNCELLEME ===
   @Transactional
   public Order updateStatus(Long orderId, OrderStatus toStatus) {
     var order = orderRepo.findWithItemsById(orderId)
@@ -235,10 +213,10 @@ public class OrderService {
     }
     
     if (TERMINAL.contains(from)) {
-      throw new IllegalArgumentException("Bu sipariş son durumdadır (" + from + "). Değiştirilemez.");
+      throw new IllegalArgumentException("Sipariş son durumdadır. Değiştirilemez.");
     }
     if (!isAllowedTransition(from, toStatus)) {
-      throw new IllegalArgumentException("Geçersiz durum geçişi: " + from + " -> " + toStatus);
+      throw new IllegalArgumentException("Geçersiz durum geçişi.");
     }
 
     if (toStatus == OrderStatus.CANCELED && canRestockOnCancel(from)) {
@@ -256,52 +234,30 @@ public class OrderService {
 
     logStatusChange(saved, from, toStatus, null);
 
-    // --- RabbitMQ Entegrasyonu ---
     try {
-      OrderEventDto event = new OrderEventDto(
-          saved.getId(),
-          saved.getBuyerEmail(),
-          saved.getBuyerName(),
-          saved.getOrderTotalTry()
-      );
-
+      OrderEventDto event = new OrderEventDto(saved.getId(), saved.getBuyerEmail(), saved.getBuyerName(), saved.getOrderTotalTry());
+      rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_NAME, RabbitConfig.ROUTING_KEY_ORDER_CREATED, event);
+      
       if (toStatus == OrderStatus.PAID) {
-        log.info(">>> ORDER SERVICE: Sipariş (ID: {}) PAID. RabbitMQ'ya '{}' gönderiliyor...", 
-                 saved.getId(), RabbitConfig.ROUTING_KEY_ORDER_PAID);
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE_NAME, 
-            RabbitConfig.ROUTING_KEY_ORDER_PAID, 
-            event
-        );
+        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_NAME, RabbitConfig.ROUTING_KEY_ORDER_PAID, event);
       } else if (toStatus == OrderStatus.SHIPPED) {
-        log.info(">>> ORDER SERVICE: Sipariş (ID: {}) SHIPPED. RabbitMQ'ya '{}' gönderiliyor...", 
-                 saved.getId(), RabbitConfig.ROUTING_KEY_ORDER_SHIPPED);
-        rabbitTemplate.convertAndSend(
-            RabbitConfig.EXCHANGE_NAME, 
-            RabbitConfig.ROUTING_KEY_ORDER_SHIPPED, 
-            event
-        );
+        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_NAME, RabbitConfig.ROUTING_KEY_ORDER_SHIPPED, event);
       }
     } catch (Exception e) {
-      log.error(">>> ORDER SERVICE: RabbitMQ'ya sipariş durumu mesajı gönderilemedi!", e);
+      log.error("RabbitMQ hatası", e);
     }
-    // --- Bitiş ---
 
     initializeGraph(saved);
     return saved;
   }
 
-  /**
-   * Sipariş geçmişini güvenli bir şekilde getirir.
-   */
   @Transactional(readOnly = true)
   public List<OrderStatusHistory> history(Long orderId, Authentication authentication) {
     var order = getOneOrderSecured(orderId, authentication);
     return historyRepo.findByOrderIdOrderByChangedAtAsc(order.getId());
   }
 
-  // === 6. YARDIMCI METOTLAR (HELPER) ===
-
+  // === HELPER ===
   private static final Set<OrderStatus> TERMINAL = EnumSet.of(OrderStatus.DELIVERED, OrderStatus.CANCELED);
 
   private void initializeGraph(Order order) {
@@ -323,9 +279,7 @@ public class OrderService {
   }
 
   private boolean canRestockOnCancel(OrderStatus from) {
-    return from == OrderStatus.PENDING
-        || from == OrderStatus.PAID
-        || from == OrderStatus.PREPARING;
+    return from == OrderStatus.PENDING || from == OrderStatus.PAID || from == OrderStatus.PREPARING;
   }
 
   private void logStatusChange(Order order, OrderStatus from, OrderStatus to, String note) {
@@ -336,5 +290,21 @@ public class OrderService {
         .note(note)
         .build();
     historyRepo.save(h);
+  }
+  @Transactional
+  public void deleteOrder(Long orderId) {
+      // 1. Önce sipariş var mı kontrol et
+      if (!orderRepo.existsById(orderId)) {
+          throw new IllegalArgumentException("Sipariş bulunamadı: " + orderId);
+      }
+
+      // 2. Siparişin "Geçmiş" (History) kayıtlarını bul ve sil
+      // (Eğer bunu yapmazsan Foreign Key hatası verir)
+      List<OrderStatusHistory> histories = historyRepo.findByOrderIdOrderByChangedAtAsc(orderId);
+      historyRepo.deleteAll(histories);
+
+      // 3. Şimdi Siparişin kendisini sil
+      // (Not: Order entity'sinde 'items' listesi için CascadeType.ALL tanımlı olduğunu varsayıyoruz)
+      orderRepo.deleteById(orderId);
   }
 }

@@ -12,10 +12,11 @@ public record ProductDto(
     Long categoryId,
     String categoryName,
     String imageUrl,
-    Double averageRating // YENİ ALAN
+    String imageUrl2, // YENİ
+    String imageUrl3, // YENİ
+    Double averageRating
 ) {
   
-  // YENİ: Ortalama puanı da alan metot (Detay sayfası için)
   public static ProductDto from(Product p, Double averageRating) {
     var cat = p.getCategory();
     return new ProductDto(
@@ -27,12 +28,12 @@ public record ProductDto(
         (cat != null ? cat.getId() : null),
         (cat != null ? cat.getName() : null),
         p.getImageUrl(),
-        averageRating
+        p.getImageUrl2(), // YENİ: Eklendi
+        p.getImageUrl3(), // YENİ: Eklendi
+        (averageRating != null ? averageRating : 0.0)
     );
   }
 
-  // ESKİ: Sadece ürünü alan metot (Liste sayfaları için, puanı 0.0 varsayarız)
-  // Bu sayede liste sayfalarında N+1 sorgu performansı sorunu yaşamayız.
   public static ProductDto from(Product p) {
     return from(p, 0.0);
   }

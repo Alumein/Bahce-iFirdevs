@@ -5,18 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Navigate, Link } from 'react-router-dom'; 
 
-const API_URL = 'http://localhost:8080/api';
-
-// --- İSTANBUL İLÇELERİ LİSTESİ ---
-const ISTANBUL_ILCELERI = [
-  "Adalar", "Arnavutköy", "Ataşehir", "Avcılar", "Bağcılar", "Bahçelievler", 
-  "Bakırköy", "Başakşehir", "Bayrampaşa", "Beşiktaş", "Beykoz", "Beylikdüzü", 
-  "Beyoğlu", "Büyükçekmece", "Çatalca", "Çekmeköy", "Esenler", "Esenyurt", 
-  "Eyüpsultan", "Fatih", "Gaziosmanpaşa", "Güngören", "Kadıköy", "Kağıthane", 
-  "Kartal", "Küçükçekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer", 
-  "Şile", "Silivri", "Şişli", "Sultanbeyli", "Sultangazi", "Tuzla", "Ümraniye", 
-  "Üsküdar", "Zeytinburnu"
-];
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 
 // Sipariş Durumu Çeviri Haritası
 const statusMap = {
@@ -33,6 +22,10 @@ export default function AccountPage() {
 
   const [addresses, setAddresses] = useState([]); 
   const [orders, setOrders] = useState([]); 
+  
+  // --- YENİ: DİNAMİK İLÇE LİSTESİ ---
+  const [districtsList, setDistrictsList] = useState([]);
+
   const [loading, setLoading] = useState(true); 
   const [formLoading, setFormLoading] = useState(false); 
   const [error, setError] = useState(null); 
@@ -63,13 +56,17 @@ export default function AccountPage() {
       setProfileData({ fullName: user.fullName, phone: user.phone || '' });
       
       try {
-        const [addrRes, orderRes] = await Promise.all([
+        // GÜNCELLEME: İlçeleri de çekiyoruz
+        const [addrRes, orderRes, distRes] = await Promise.all([
           axios.get(`${API_URL}/addresses/me`),
-          axios.get(`${API_URL}/orders/me`)
+          axios.get(`${API_URL}/orders/me`),
+          axios.get(`${API_URL}/districts/active`) // Sadece aktif ilçeler
         ]);
         
         setAddresses(addrRes.data);
         setOrders(orderRes.data);
+        setDistrictsList(distRes.data);
+
       } catch (err) {
         console.error("Hesap verisi çekilemedi:", err);
         setError("Hesap verileri yüklenirken bir hata oluştu.");
@@ -116,7 +113,7 @@ export default function AccountPage() {
   };
 
   const handleDeleteAddress = async (addressId) => {
-    if (!window.confirm("Bu adresi silmek istediğinizden emin misiniz?")) return;
+    if (!window.confirm("Bu adresi silmek istediğinize emin misiniz?")) return;
     
     setLoading(true); 
     try {
@@ -236,7 +233,7 @@ export default function AccountPage() {
 
             {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
 
-            {/* --- YENİ ADRES FORMU (DÜZENLENDİ) --- */}
+            {/* --- YENİ ADRES FORMU (GÜNCELLENDİ) --- */}
             {showNewAddressForm && (
               <form onSubmit={handleAddNewAddress} style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-body)', borderRadius: 'var(--radius)' }}>
                 <div className="input-group"><label>Adres Başlığı</label><input name="addressLabel" placeholder="Ev, İş" value={newAddress.addressLabel} onChange={handleAddressFormChange} required /></div>
@@ -254,13 +251,14 @@ export default function AccountPage() {
                       <option value="İstanbul">İstanbul</option>
                     </select>
                   </div>
-                  {/* İLÇE (SEÇMELİ LİSTE) */}
+                  {/* İLÇE (DİNAMİK SEÇMELİ LİSTE) */}
                   <div className="input-group">
                     <label>İlçe</label>
                     <select name="district" value={newAddress.district} onChange={handleAddressFormChange} required>
                       <option value="">Seçiniz</option>
-                      {ISTANBUL_ILCELERI.map(ilce => (
-                        <option key={ilce} value={ilce}>{ilce}</option>
+                      {/* DİNAMİK LİSTEYİ BURADA KULLANIYORUZ */}
+                      {districtsList.map(d => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
                       ))}
                     </select>
                   </div>

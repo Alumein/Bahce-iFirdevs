@@ -49,8 +49,8 @@ export default function AboutPage() {
           <h3 style={{ color: 'var(--primary)', marginBottom: '10px' }}>E-posta</h3>
           <p style={{ color: 'var(--text-muted)' }}>
             Her türlü sorunuz için:<br />
-            <a href="mailto:info@bahceifirdevs.com.tr" style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
-              info@bahceifirdevs.com.tr
+            <a href="mailto:info@bahce-ifirdevs.com.tr" style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+              info@bahce-ifirdevs.com.tr
             </a>
           </p>
         </div>
@@ -60,12 +60,12 @@ export default function AboutPage() {
       <div style={{ 
         textAlign: 'center', 
         padding: '40px', 
-        background: '#f8f9fa', 
+        background: '#FEFDF5', 
         borderRadius: 'var(--radius)',
         border: '1px solid var(--border-color)',
         marginBottom: '60px'
       }}>
-        <h3 style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-main)', marginBottom: '15px' }}>
+        <h3 style={{ fontFamily: 'var(--font-heading)', color: 'var(--primary)', marginBottom: '15px' }}>
           Bizi Takip Edin
         </h3>
         <p style={{ marginBottom: '25px', color: '#555' }}>

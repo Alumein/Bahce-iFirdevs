@@ -2,229 +2,242 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom'; 
+import { Link } from 'react-router-dom';
 import { useWishlist } from '../context/WishlistContext';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
+
+const CAT_IDS = {
+  BUKET: 3,   
+  VAZO: 1,    
+  CELENK: 2,
+  PASTA: 17,
+  GUL: 4
+};
 
 export default function HomePage() {
-  const [kategoriler, setKategoriler] = useState([]);
-  const [urunler, setUrunler] = useState([]);
-  
-  const [searchTerm, setSearchTerm] = useState(''); 
-  const [activeSearch, setActiveSearch] = useState(''); 
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null); 
-
+  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  
+  // --- YENİ: VİDEO STATE ---
+  const [heroVideo, setHeroVideo] = useState('/video.mp4'); // Başlangıçta varsayılanı kullan
 
   const { isFavorite, toggleFavorite } = useWishlist();
 
+  // --- SAYFA YÜKLENİNCE ---
   useEffect(() => {
-    const fetchKategoriler = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/categories`);
-        setKategoriler(response.data);
-      } catch (err) { console.error(err); }
-    };
-    fetchKategoriler();
-  }, []);
-
-  useEffect(() => {
-    const fetchUrunler = async () => {
-      setLoading(true);
+    // 1. Vitrin Ürünlerini Çek
+    const fetchFeatured = async () => {
       try {
         const response = await axios.get(`${API_URL}/products/page`, {
-          params: { page: 0, size: 20, sort: 'createdAt,desc', q: activeSearch, categoryId: selectedCategoryId }
+          params: { page: 0, size: 20, sort: 'createdAt,desc' }
         });
-        setUrunler(response.data.content);
-        setError(null);
-      } catch (err) { setError("Ürünler yüklenemedi."); } 
+        
+        const allProducts = response.data.content;
+        const shuffled = allProducts.sort(() => 0.5 - Math.random());
+        setFeaturedProducts(shuffled.slice(0, 3));
+
+      } catch (err) { console.error(err); } 
       finally { setLoading(false); }
     };
-    fetchUrunler();
-  }, [activeSearch, selectedCategoryId]); 
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setActiveSearch(searchTerm);
-  };
+    // 2. Video Ayarını Çek (Database'den)
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/settings/hero-video`);
+        if (res.data && res.data.url) {
+          setHeroVideo(res.data.url);
+        }
+      } catch (e) {
+        console.log("Özel video ayarı bulunamadı, varsayılan kullanılıyor.");
+      }
+    };
 
-  const handleCategoryClick = (catId) => {
-    setSelectedCategoryId(prev => prev === catId ? null : catId);
-  };
+    fetchFeatured();
+    fetchSettings();
+  }, []);
+
+  const categories = [
+    { id: 1, title: 'Buketler', img: '/karisikbuket.png', link: `/shop?category=${CAT_IDS.BUKET}` },
+    { id: 2, title: 'Vazo Çiçekleri', img: 'karisikvazobeyaz.png', link: `/shop?category=${CAT_IDS.VAZO}` },
+    { id: 3, title: 'Tören Çelenkleri', img: 'cenazevemerasimcelenk.png', link: `/shop?category=${CAT_IDS.CELENK}` },
+  ];
 
   return (
-    <div>
-      {/* --- KAMPANYA BİLDİRİMİ --- */}
-      <div style={{
-        background: '#212529', color: '#fff', textAlign: 'center', padding: '10px', 
-        fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px', margin: 0, position: 'relative', zIndex: 2
-      }}>
-        🚚 <strong>TÜM SİPARİŞLERDE KARGO BEDAVA!</strong> | İstanbul İçi Aynı Gün Teslimat Fırsatı
-      </div>
+    <>
+      {/* 1. SCROLLBAR FIX (Yatay Kaydırma Engelleme) */}
+      <style>{`
+        html, body {
+          overflow-x: hidden !important;
+          max-width: 100% !important;
+          margin: 0;
+          padding: 0;
+        }
+      `}</style>
 
-      {/* --- HERO (Banner) --- */}
-      {!activeSearch && !selectedCategoryId && (
-        <div className="hero" style={{ marginTop: 0 }}>
-          <div className="hero-content">
-            <h2>Doğanın En Güzel Hediyesi</h2>
-            <p>Özel günleriniz için en taze ve zarif aranjmanlar.</p>
-            <button className="btn btn-primary" onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}>
-              Alışverişe Başla
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- ARAMA & FİLTRE ALANI --- */}
-      <div style={{ maxWidth: '900px', margin: '30px auto', textAlign: 'center', padding: '0 10px' }}>
+      {/* Ana Wrapper */}
+      <div style={{ paddingBottom: '50px' }}>
         
-        {/* --- SEARCH BAR (KOMPAKT & GÜÇLÜ YAPI) --- */}
-        <form 
-          onSubmit={handleSearchSubmit} 
-          style={{ 
-            display: 'flex',            
-            alignItems: 'center',       
-            justifyContent: 'space-between', 
-            
-            width: '90%',               /* Mobilde kenarlardan pay bırakır */
-            maxWidth: '500px',          /* Masaüstünde çok genişlemez */
-            height: '42px',             /* Daha ince ve zarif yükseklik */
-            
-            margin: '0 auto 25px auto',
-            background: 'white',
-            
-            border: '1px solid #ddd',
-            borderRadius: '50px',       
-            boxShadow: '0 3px 10px rgba(0,0,0,0.05)',
-            overflow: 'hidden',         
-            boxSizing: 'border-box'
-          }}
-        >
-          <input 
-            type="text" 
-            placeholder="Çiçek ara..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: '1',                /* Kalan alanı doldur */
-              minWidth: '0',            /* KRİTİK: Mobilde inputun küçülmesine izin ver (Butonu kurtarır) */
-              height: '100%',
-              
-              padding: '0 15px',        /* İç boşluk */
-              fontSize: '0.9rem',
-              color: '#333',
-              
-              border: 'none',           
-              outline: 'none',          
-              background: 'transparent',
-              margin: '0',
-              boxSizing: 'border-box'
+        {/* 2. VIDEO HERO BANNER (Tam Ekran) */}
+        <div style={{ 
+          position: 'relative',
+          width: '100vw', 
+          height: 'calc(100vh - 80px)', 
+          
+          /* BREAKOUT (Kapsayıcı dışına taşma) */
+          left: '50%',
+          right: '50%',
+          marginLeft: '-50vw',
+          marginRight: '-50vw',
+          
+          marginTop: 0,
+          overflow: 'hidden' 
+        }}>
+          
+          {/* --- DİNAMİK VİDEO --- */}
+          <video 
+            key={heroVideo} // URL değişince bileşeni yenilemek için
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            src={heroVideo}
+            style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover', 
+              zIndex: 0,
+              transform: 'translate3d(0, 0, 0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              willChange: 'transform'
             }}
           />
-          
-          <button 
-            type="submit"
-            style={{
-              height: '100%',           
-              padding: '0 15px',        /* Butonu daralttık */
-              minWidth: '60px',         /* Çok da küçülmesin */
-              
-              background: '#007bff',
-              color: 'white',
-              
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '0.8rem',       /* Yazı boyutu küçüldü */
-              
-              flexShrink: '0',          /* KRİTİK: Buton asla kaybolmaz */
-              whiteSpace: 'nowrap',     
-              margin: '0',
-              borderRadius: '0',
-              lineHeight: '1'
-            }}
-          >
-            ARA
-          </button>
-        </form>
 
-        {/* Kategori Filtresi */}
-        <div className="filter-bar mobile-category-grid" style={{flexWrap:'wrap', justifyContent:'center', marginTop:'20px'}}>
-          <div 
-            className={`filter-btn ${selectedCategoryId === null ? 'active' : ''}`}
-            onClick={() => setSelectedCategoryId(null)}
-          >
-            Tümü
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 1 }}></div>
+
+          {/* --- HERO METNİ --- */}
+          <div style={{ 
+            position: 'relative', 
+            zIndex: 2, 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            textAlign: 'center', 
+            color: 'white',
+            padding: '0 20px'
+          }}>
+            <h1 style={{ 
+              fontSize: '4rem', 
+              fontFamily: 'var(--font-heading)', 
+              marginBottom: '20px', 
+              textShadow: '0 4px 15px rgba(0,0,0,0.5)' 
+            }}>
+              Cennet Bahçelerinin <br/> Dünyadaki Yansıması
+            </h1>
+            <p style={{ 
+              fontSize: '1.4rem', 
+              maxWidth: '800px', 
+              marginBottom: '40px', 
+              textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              lineHeight: '1.6'
+            }}>
+              En nadide çiçeklerle tasarladığımız "Bahçe-i Firdevs" koleksiyonu ile <br/>
+              sevdiklerinize bu dünyada cennetten bir esinti sunun.
+            </p>
+            <Link to="/shop" className="btn btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem', borderRadius: '0', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
+              Koleksiyonu Keşfet
+            </Link>
           </div>
-          {kategoriler.map(kategori => (
-            <div 
-              key={kategori.id} 
-              className={`filter-btn ${selectedCategoryId === kategori.id ? 'active' : ''}`}
-              onClick={() => handleCategoryClick(kategori.id)}
-            >
-              {kategori.name}
-            </div>
-          ))}
         </div>
-      </div>
 
-      {/* --- LİSTE BAŞLIĞI --- */}
-      <div className="container">
-        <h3 style={{ 
-          marginBottom: '20px', fontSize: '1.4rem', fontFamily: 'var(--font-heading)', 
-          borderLeft: '4px solid var(--primary)', paddingLeft: '15px', color: 'var(--text-main)'
-        }}>
-          {selectedCategoryId ? 'Kategori Sonuçları' : 'Öne Çıkan Ürünler'} 
-          {activeSearch && ` - Arama: "${activeSearch}"`}
-        </h3>
-        
-        {/* --- ÜRÜN LİSTESİ --- */}
-        {loading ? (
-          <div style={{textAlign: 'center', padding: '50px'}}>Yükleniyor...</div>
-        ) : error ? (
-          <p style={{ color: 'red', textAlign:'center' }}>{error}</p>
-        ) : urunler.length === 0 ? (
-          <div style={{textAlign: 'center', padding: '50px', background: '#f9f9f9', borderRadius: '10px'}}>
-            <h3>Üzgünüz, ürün bulunamadı.</h3>
-            <p>Farklı bir arama yapmayı veya filtreleri temizlemeyi deneyin.</p>
-          </div>
-        ) : (
-          <div className="grid-layout">
-            {urunler.map(urun => (
-              <div key={urun.id} className="product-card">
-                <button 
-                  className="fav-btn"
-                  style={{ color: isFavorite(urun.id) ? '#E91E63' : '#CCC', fontSize: '1.5rem', zIndex: 10 }}
-                  onClick={(e) => { e.preventDefault(); toggleFavorite(urun.id); }}
-                >
-                  {isFavorite(urun.id) ? '❤️' : '🤍'}
-                </button>
-                <Link to={`/product/${urun.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                  <div className="card-img-wrapper">
-                    <img src={urun.imageUrl || 'https://placehold.co/400x300'} alt={urun.name} />
-                  </div>
-                  <div className="card-info">
-                    <h4 className="card-title">{urun.name}</h4>
-                    <p className="card-desc">
-                      {urun.shortDescription ? urun.shortDescription.substring(0, 50) + '...' : 'Doğal ve taze.'}
-                    </p>
-                    <div className="card-footer">
-                      <span className="price">{urun.priceTry} TL</span>
-                      {urun.stock > 0 ? (
-                         <span style={{ fontSize: '0.85rem', background: '#E8F5E9', color: '#2E7D32', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>Stokta Var</span>
-                      ) : (
-                         <span style={{ fontSize: '0.85rem', background: '#FFEBEE', color: '#C62828', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>Tükendi</span>
-                      )}
-                    </div>
+        {/* 3. İÇERİK KISMI (CONTAINER İÇİNDE) */}
+        <div className="container" style={{ marginTop: '80px' }}>
+
+          {/* Koleksiyonlar */}
+          <div style={{ padding: '80px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Koleksiyonlar</span>
+              <h2 style={{ fontSize: '2.5rem', marginTop: '10px', color: 'var(--primary)' }}>Zevkinize Uygun Seçimler</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+              {categories.map(cat => (
+                <Link to={cat.link} key={cat.id} style={{ position: 'relative', height: '400px', borderRadius: '0', overflow: 'hidden', display: 'block' }}>
+                  <div style={{ width: '100%', height: '100%', backgroundImage: `url(${cat.img})`, backgroundSize: 'cover', backgroundPosition: 'center', transition: 'transform 0.5s' }} 
+                       onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                       onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'} />
+                  <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', background: 'rgba(255, 255, 255, 0.9)', padding: '20px', borderRadius: '0', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem',color: 'var(--primary)' }}>{cat.title}</h3>
+                    <span style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: 'bold' }}>İncele &rarr;</span>
                   </div>
                 </Link>
-              </div> 
-            ))}
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* 4. VİTRİN (ARKAPLAN BEYAZ VE KÖŞELİ) */}
+          <div style={{ 
+            padding: '50px 0', 
+            background: '#F5F1E8', /* Beyaz Arkaplan */
+            borderRadius: '0',   /* Köşeli */
+            marginBottom: '80px' 
+          }}>
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '40px' }}>
+                <div>
+                  <h2 style={{ fontSize: '2rem', marginBottom: '5px',color: 'var(--primary)' }}>Vitrin Ürünleri</h2>
+                  <p style={{ color: '#666' }}>Sizin için seçtiğimiz özel tasarımlar.</p>
+                </div>
+                <Link to="/shop" className="btn btn-secondary">Tümünü Gör</Link>
+              </div>
+              {loading ? <div style={{textAlign:'center'}}>Yükleniyor...</div> : (
+                <div className="grid-layout">
+                  {featuredProducts.map(urun => (
+                    <div key={urun.id} className="product-card" style={{ background: 'white' }}>
+                      <button className="fav-btn" onClick={(e) => { e.preventDefault(); toggleFavorite(urun.id); }} style={{ color: isFavorite(urun.id) ? '#E91E63' : '#CCC' }}>
+                        {isFavorite(urun.id) ? '❤️' : '🤍'}
+                      </button>
+                      <Link to={`/product/${urun.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <div className="card-img-wrapper" style={{ height: '300px' }}>
+                          <img src={urun.imageUrl || 'https://placehold.co/400x300'} alt={urun.name} />
+                        </div>
+                        <div className="card-info">
+                          <h4 className="card-title">{urun.name}</h4>
+                          <div className="card-footer">
+                            <span className="price">{urun.priceTry} TL</span>
+                          </div>
+                        </div>
+                      </Link>
+                    </div> 
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 5. HİKAYEMİZ */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '50px', paddingBottom: '100px' }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <img src='https://images.pexels.com/photos/4273439/pexels-photo-4273439.jpeg?auto=compress&cs=tinysrgb&w=800' alt="Atölye" style={{ width: '100%', borderRadius: '0', boxShadow: 'var(--shadow-hover)' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <h4 style={{ color: 'var(--accent)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hikayemiz</h4>
+              <h2 style={{ fontSize: '2.5rem', margin: '15px 0',color:'var(--primary)'}}>Her Çiçeğin Bir Dili Vardır</h2>
+              <p style={{ fontSize: '1.1rem', color: '#555', lineHeight: '1.8', marginBottom: '30px' }}>
+                Bahçe-i Firdevs olarak, çiçeklerin sadece birer bitki değil, duyguların en saf hali olduğuna inanıyoruz. 
+                Her sabah özenle seçilen taze çiçeklerimizi, ustalarımızın dokunuşlarıyla sanata dönüştürüyoruz.
+              </p>
+              <Link to="/about" className="btn btn-primary">Daha Fazla Oku</Link>
+            </div>
+          </div>
+
+        </div>
       </div>
-    </div>
+    </>
   );
 }

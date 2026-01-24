@@ -6,107 +6,113 @@ import { useCart } from '../context/CartContext';
 import axios from 'axios';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 
-const API_URL = 'http://localhost:8080/api';
-
-// --- İSTANBUL İLÇELERİ LİSTESİ ---
-const ISTANBUL_ILCELERI = [
-  "Adalar", "Arnavutköy", "Ataşehir", "Avcılar", "Bağcılar", "Bahçelievler", 
-  "Bakırköy", "Başakşehir", "Bayrampaşa", "Beşiktaş", "Beykoz", "Beylikdüzü", 
-  "Beyoğlu", "Büyükçekmece", "Çatalca", "Çekmeköy", "Esenler", "Esenyurt", 
-  "Eyüpsultan", "Fatih", "Gaziosmanpaşa", "Güngören", "Kadıköy", "Kağıthane", 
-  "Kartal", "Küçükçekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer", 
-  "Şile", "Silivri", "Şişli", "Sultanbeyli", "Sultangazi", "Tuzla", "Ümraniye", 
-  "Üsküdar", "Zeytinburnu"
-];
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 
 export default function CheckoutPage() {
   const { isAuthenticated, user, authLoading } = useAuth();
   const { cart, cartInitialLoading, cartLoading, refreshCart, getHeaders, applyCoupon, removeCoupon } = useCart();
   const navigate = useNavigate();
 
-  // Adım 1: Adres & Zaman, Adım 2: Ödeme
   const [currentStep, setCurrentStep] = useState(1);
-
-  // Adres Form State'leri
   const [savedAddresses, setSavedAddresses] = useState([]); 
   const [selectedAddressId, setSelectedAddressId] = useState(''); 
   const [addressLine, setAddressLine] = useState('');
-  
-  // DÜZELTME: Şehir varsayılan olarak İstanbul
   const [city, setCity] = useState('İstanbul');
-  const [district, setDistrict] = useState('');
   
-  // Sipariş Notu & Kupon
+  // İLÇE YÖNETİMİ
+  const [districtsList, setDistrictsList] = useState([]); // API'den gelen ilçeler
+  const [district, setDistrict] = useState(''); // Seçili ilçe adı
+  
   const [notes, setNotes] = useState('');
   const [couponCode, setCouponCode] = useState('');
-
-  // Zamanlama State'leri
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('09:00 - 12:00');
   const [timeError, setTimeError] = useState(null); 
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // --- 1. GÜVENLİK VE SEPET KONTROLÜ ---
-  if (authLoading || cartInitialLoading) {
-    return <div style={{padding:'50px', textAlign:'center'}}>Yükleniyor...</div>;
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />; 
-  }
+  const [paytrToken, setPaytrToken] = useState(null);
 
-  if (!cart || !cart.items || cart.items.length === 0) {
-    return (
-      <div style={{padding:'50px', textAlign:'center'}}>
-        <h2>Sepetiniz boş.</h2>
-        <Link to="/" className="btn btn-primary" style={{marginTop:'20px'}}>Alışverişe dön</Link>
-      </div>
-    );
-  }
-
-  // --- 2. VERİ ÇEKME ---
+  // 1. Verileri Çek (Adresler ve İlçeler)
   useEffect(() => {
+    // İlçeleri çek
+    axios.get(`${API_URL}/districts/active`)
+      .then(res => setDistrictsList(res.data))
+      .catch(console.error);
+
+    // Kayıtlı adresleri çek
     if (isAuthenticated) { 
       axios.get(`${API_URL}/addresses/me`)
         .then(res => {
           setSavedAddresses(res.data);
-          if (res.data.length > 0) setSelectedAddressId(res.data[0].id.toString());
-          else setSelectedAddressId('new');
+          if (res.data.length > 0) {
+            setSelectedAddressId(res.data[0].id.toString());
+            setDistrict(res.data[0].district);
+          } else {
+            setSelectedAddressId('new');
+          }
         })
         .catch(console.error);
     }
   }, [isAuthenticated]);
 
-  // --- 3. ZAMAN DOĞRULAMA ---
+  // 2. Adres Seçimi
   useEffect(() => {
-    validateDeliveryTime();
-  }, [deliveryDate, deliveryTime]);
-
-  const validateDeliveryTime = () => {
-    if (!deliveryDate || !deliveryTime) {
-      setTimeError(null);
-      return;
+    if (selectedAddressId !== 'new' && savedAddresses.length > 0) {
+      const addr = savedAddresses.find(a => a.id.toString() === selectedAddressId);
+      if (addr) setDistrict(addr.district);
     }
+  }, [selectedAddressId, savedAddresses]);
 
+  // 3. Zaman Doğrulama
+  const validateDeliveryTime = () => {
+    if (!deliveryDate || !deliveryTime) { setTimeError(null); return; }
     const startHour = parseInt(deliveryTime.split(':')[0], 10); 
     const selectedDateTime = new Date(deliveryDate);
     selectedDateTime.setHours(startHour, 0, 0, 0);
-
     const now = new Date();
     const minAllowedTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-    if (selectedDateTime < now) {
-      setTimeError("Geçmiş bir zaman dilimi seçemezsiniz.");
-    } else if (selectedDateTime < minAllowedTime) {
-      setTimeError("Siparişler en az 2 saat önceden verilmelidir.");
-    } else {
-      setTimeError(null);
-    }
+    if (selectedDateTime < now) setTimeError("Geçmiş bir zaman dilimi seçemezsiniz.");
+    else if (selectedDateTime < minAllowedTime) setTimeError("Siparişler en az 2 saat önceden verilmelidir.");
+    else setTimeError(null);
   };
 
-  // --- 4. DİĞER FONKSİYONLAR ---
+  useEffect(() => { validateDeliveryTime(); }, [deliveryDate, deliveryTime]);
+
+  // PayTR iFrame Resizer
+  useEffect(() => {
+    if (paytrToken) {
+      const script = document.createElement("script");
+      script.src = "https://www.paytr.com/js/iframeResizer.min.js";
+      script.async = true;
+      script.onload = () => {
+        if (window.iFrameResize) {
+          window.iFrameResize({}, '#paytriframe');
+        }
+      };
+      document.body.appendChild(script);
+      return () => { document.body.removeChild(script); };
+    }
+  }, [paytrToken]);
+
+  // --- KARGO HESAPLAMA (CLIENT SIDE) ---
+  // API'den gelen districtsList içindeki fiyatı kullanacağız
+  const calculateShippingCost = () => {
+    const cartTotal = cart?.totalTry || 0;
+    if (cartTotal >= 5000) return 0;
+
+    if (!district) return 0;
+
+    // Seçilen ilçeyi listede bul
+    const selectedDistrict = districtsList.find(d => d.name === district);
+    return selectedDistrict ? selectedDistrict.shippingPrice : 250; // Bulamazsa varsayılan 250
+  };
+
+  const cartTotal = cart?.totalTry || 0;
+  const shippingCost = calculateShippingCost();
+  const finalTotal = cartTotal + shippingCost;
+
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
     if (!couponCode.trim()) return;
@@ -116,29 +122,24 @@ export default function CheckoutPage() {
 
   const handleNextStep = () => {
     if (currentStep === 1) {
-      // Validasyonlar
       if (selectedAddressId === 'new') {
         if (!addressLine) { alert("Lütfen adres satırını doldurun."); return; }
-        if (!district) { alert("Lütfen bir ilçe seçiniz."); return; } // İlçe kontrolü eklendi
+        if (!district) { alert("Lütfen bir ilçe seçiniz."); return; }
       }
       if (!deliveryDate) { alert("Lütfen bir teslimat tarihi seçiniz."); return; }
-      
-      if (timeError) {
-        alert(timeError);
-        return;
-      }
-      
+      if (timeError) { alert(timeError); return; }
       setCurrentStep(2);
     }
   };
 
+  // SİPARİŞİ GÖNDER
   const handleSubmitOrder = async () => {
     setLoading(true); setError(null);
 
     let checkoutPayload = {
-      buyerName: user.fullName,
-      buyerEmail: user.email,
-      buyerPhone: user.phone,
+      addressLine: addressLine,
+      city: city,
+      district: district,
       notes: notes,
       deliveryDate: deliveryDate,
       deliveryTime: deliveryTime
@@ -146,31 +147,55 @@ export default function CheckoutPage() {
     
     if (selectedAddressId !== 'new') {
       const addr = savedAddresses.find(a => a.id.toString() === selectedAddressId);
-      checkoutPayload.addressLine = addr.addressLine;
-      checkoutPayload.city = addr.city;
-      checkoutPayload.district = addr.district;
-    } else {
-      checkoutPayload.addressLine = addressLine;
-      checkoutPayload.city = city; // 'İstanbul' gidecek
-      checkoutPayload.district = district;
+      if (addr) {
+          checkoutPayload.addressLine = addr.addressLine;
+          checkoutPayload.city = addr.city;
+          checkoutPayload.district = addr.district;
+      }
     }
     
     try {
-      await axios.post(`${API_URL}/payment/checkout`, checkoutPayload, { headers: getHeaders() }); 
-      alert("Siparişiniz başarıyla alındı!");
-      await refreshCart(); 
-      navigate('/order-success'); 
+      const endpoint = `${API_URL}/payment/checkout`;
+      const response = await axios.post(endpoint, checkoutPayload, { headers: getHeaders() });
+      
+      if (response.data.status === 'success' && response.data.token) {
+        setPaytrToken(response.data.token);
+      } else {
+        throw new Error("Ödeme sistemi başlatılamadı.");
+      }
+
     } catch (err) {
+      console.error(err);
       setError(err.response?.data?.message || "Sipariş verilirken bir hata oluştu.");
     } finally { setLoading(false); }
   };
 
+  if (authLoading || cartInitialLoading) return <div style={{padding:'50px', textAlign:'center'}}>Yükleniyor...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />; 
+  if (!cart || !cart.items || cart.items.length === 0) {
+    return (
+      <div style={{padding:'50px', textAlign:'center'}}>
+        <h2>Sepetiniz boş.</h2>
+        <Link to="/" className="btn btn-primary" style={{marginTop:'20px'}}>Alışverişe dön</Link>
+      </div>
+    );
+  }
+
   const today = new Date().toISOString().split('T')[0];
+
+  if (paytrToken) {
+    return (
+      <div className="container" style={{ padding: '40px 0', textAlign: 'center' }}>
+        <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>Güvenli Ödeme</h2>
+        <div style={{ width: '100%', minHeight: '600px', border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden' }}>
+          <iframe src={`https://www.paytr.com/odeme/guvenli/${paytrToken}`} id="paytriframe" style={{ width: '100%', minHeight: '600px' }} title="PayTR"></iframe>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '40px 0' }}>
-      
-      {/* Stepper */}
       <div className="stepper-wrapper">
         {[1, 2].map(step => (
           <div key={step} className={`step-item ${currentStep >= step ? 'active' : ''}`}>
@@ -182,20 +207,16 @@ export default function CheckoutPage() {
       </div>
 
       <div className="checkout-layout">
-        
-        {/* SOL KOLON */}
         <div>
-          {/* ADIM 1 */}
           {currentStep === 1 && (
             <div className="product-card" style={{ padding: '30px', height: 'auto', marginBottom: '20px' }}>
               <h3 style={{marginBottom:'20px', color:'var(--text-main)'}}>1. Teslimat Bilgileri</h3>
-              
               {savedAddresses.length > 0 && (
                 <div className="input-group">
                   <label>Kayıtlı Adreslerim</label>
                   <select value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)}>
                     {savedAddresses.map(addr => (
-                      <option key={addr.id} value={addr.id}>{addr.addressLabel} - {addr.addressLine}</option>
+                      <option key={addr.id} value={addr.id}>{addr.addressLabel} - {addr.district}</option>
                     ))}
                     <option value="new">+ Yeni Adres Ekle</option>
                   </select>
@@ -208,32 +229,20 @@ export default function CheckoutPage() {
                     <label>Adres</label>
                     <textarea rows="3" value={addressLine} onChange={e => setAddressLine(e.target.value)} placeholder="Mahalle, Sokak, Kapı No..." />
                   </div>
-                  
                   <div className="form-row">
-                    {/* DÜZELTME: ŞEHİR SABİT */}
                     <div className="input-group">
                       <label>Şehir</label>
-                      <select 
-                        value={city} 
-                        disabled 
-                        style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed', color: '#6c757d' }}
-                      >
+                      <select value={city} disabled style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed', color: '#6c757d' }}>
                         <option value="İstanbul">İstanbul</option>
                       </select>
-                      <small style={{fontSize:'0.75rem', color:'var(--primary)', marginTop:'5px'}}>* Sadece İstanbul içi teslimat.</small>
                     </div>
-
-                    {/* DÜZELTME: İLÇE SEÇİMİ */}
                     <div className="input-group">
                       <label>İlçe</label>
-                      <select 
-                        value={district} 
-                        onChange={e => setDistrict(e.target.value)} 
-                        required
-                      >
+                      <select value={district} onChange={e => setDistrict(e.target.value)} required>
                         <option value="">İlçe Seçiniz</option>
-                        {ISTANBUL_ILCELERI.map(ilce => (
-                          <option key={ilce} value={ilce}>{ilce}</option>
+                        {/* ARTIK API'DEN GELEN LİSTE KULLANILIYOR */}
+                        {districtsList.map(d => (
+                          <option key={d.id} value={d.name}>{d.name} ({d.shippingPrice} TL)</option>
                         ))}
                       </select>
                     </div>
@@ -241,7 +250,6 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {/* ZAMANLAMA ALANI */}
               <div style={{ marginTop: '25px', padding: '20px', background: '#F8F9FA', borderRadius: 'var(--radius)', border: `1px solid ${timeError ? 'var(--danger)' : 'var(--border-color)'}` }}>
                 <h4 style={{marginBottom:'15px', fontSize:'1rem', color:'var(--primary)'}}>Teslimat Zamanı</h4>
                 <div className="form-row">
@@ -259,32 +267,24 @@ export default function CheckoutPage() {
                     </select>
                   </div>
                 </div>
-                {/* ZAMAN HATASI UYARISI */}
                 {timeError && (
                   <div style={{ color: '#D32F2F', background: '#FFEBEE', padding: '10px', borderRadius: '4px', fontSize: '0.9rem', marginTop: '10px' }}>
                     ⚠️ {timeError}
                   </div>
                 )}
               </div>
-
-              <button 
-                className="btn btn-primary" 
-                style={{width:'100%', marginTop:'20px', opacity: timeError ? 0.6 : 1}} 
-                onClick={handleNextStep}
-                disabled={!!timeError}
-              >
+              <button className="btn btn-primary" style={{width:'100%', marginTop:'20px', opacity: timeError ? 0.6 : 1}} onClick={handleNextStep} disabled={!!timeError}>
                 Devam Et
               </button>
             </div>
           )}
 
-          {/* ADIM 2 */}
           {currentStep === 2 && (
             <div className="product-card" style={{ padding: '30px', height: 'auto' }}>
               <h3 style={{marginBottom:'20px', color:'var(--text-main)'}}>2. Ödeme & Onay</h3>
               <div style={{padding:'20px', background:'#E3F2FD', marginBottom:'20px', borderRadius:'var(--radius)', border:'1px solid #BBDEFB'}}>
-                <p style={{fontWeight:'bold', color:'#0D47A1'}}>Kredi Kartı ile Ödeme</p>
-                <p style={{fontSize:'0.9rem', color:'#1565C0'}}>Bu bir demo uygulamasıdır. Kart bilgileriniz simüle edilecektir.</p>
+                <p style={{fontWeight:'bold', color:'#0D47A1'}}>Güvenli Ödeme</p>
+                <p style={{fontSize:'0.9rem', color:'#1565C0'}}>Onayla butonuna bastıktan sonra PayTR güvenli ödeme ekranına yönlendirileceksiniz.</p>
               </div>
               <div className="input-group">
                 <label>Sipariş Notu (Mesaj Kartı)</label>
@@ -294,14 +294,13 @@ export default function CheckoutPage() {
               <div style={{display:'flex', gap:'10px', marginTop:'20px'}}>
                 <button className="btn btn-secondary" onClick={() => setCurrentStep(1)}>Geri</button>
                 <button className="btn btn-primary" style={{flex:1}} onClick={handleSubmitOrder} disabled={loading}>
-                  {loading ? 'İşleniyor...' : `Siparişi Onayla (${cart.totalTry} TL)`}
+                  {loading ? 'Yönlendiriliyor...' : `Ödeme Ekranına Git (${finalTotal} TL)`}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* SAĞ KOLON (SEPET ÖZETİ) */}
         <div className="product-card" style={{ padding: '25px', height: 'fit-content', background:'#fff', border:'1px solid var(--border-color)' }}>
           <h4 style={{marginBottom:'15px', color:'var(--text-main)'}}>Sipariş Özeti</h4>
           <div style={{maxHeight:'300px', overflowY:'auto', marginBottom:'15px'}}>
@@ -313,11 +312,20 @@ export default function CheckoutPage() {
             ))}
           </div>
           <hr style={{margin:'15px 0', border:'0', borderTop:'1px dashed #eee'}}/>
-          <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', color:'var(--text-muted)', marginBottom:'15px'}}>
-            <span>Ara Toplam:</span><span>{cart.subTotalTry || cart.totalTry} TL</span>
+          
+          <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', color:'var(--text-muted)', marginBottom:'10px'}}>
+            <span>Ara Toplam:</span><span>{cart.totalTry} TL</span>
+          </div>
+
+          <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'15px', alignItems:'center'}}>
+            <span style={{color:'var(--text-muted)'}}>
+              Teslimat ({district ? district : 'İlçe Seçilmedi'}):
+            </span>
+            <span style={{fontWeight:'bold', color: shippingCost === 0 ? 'green' : 'var(--text-main)'}}>
+              {shippingCost === 0 ? 'ÜCRETSİZ' : `${shippingCost} TL`}
+            </span>
           </div>
           
-          {/* Kupon */}
           <div style={{marginBottom: '20px'}}>
             {cart.couponCode ? (
                <div style={{ background: '#E8F5E9', padding: '10px', borderRadius: '8px', fontSize:'0.85rem', border: '1px solid #C8E6C9', display:'flex', justifyContent:'space-between' }}>
@@ -333,11 +341,21 @@ export default function CheckoutPage() {
           </div>
           <hr style={{margin:'15px 0', border:'0', borderTop:'2px solid #eee'}}/>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <span style={{fontSize:'1.1rem', color:'var(--text-main)'}}>Toplam</span>
-            <span style={{fontSize:'1.5rem', fontWeight:'bold', color:'var(--primary)'}}>{cart.totalTry} TL</span>
+            <span style={{fontSize:'1.1rem', color:'var(--text-main)'}}>Genel Toplam</span>
+            <span style={{fontSize:'1.6rem', fontWeight:'bold', color:'var(--primary)'}}>{finalTotal} TL</span>
           </div>
+          
+          {shippingCost > 0 && cartTotal < 5000 && (
+             <div style={{marginTop:'10px', fontSize:'0.8rem', color:'green', textAlign:'center'}}>
+                🎉 {(5000 - cartTotal).toFixed(2)} TL daha eklersen kargo bedava!
+             </div>
+          )}
+          {shippingCost === 0 && (
+             <div style={{marginTop:'10px', fontSize:'0.8rem', color:'green', textAlign:'center', fontWeight:'bold'}}>
+                🎉 Kargo Bedava!
+             </div>
+          )}
         </div>
-
       </div>
     </div>
   );

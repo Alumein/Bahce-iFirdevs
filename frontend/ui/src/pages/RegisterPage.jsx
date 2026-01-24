@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 
 export default function RegisterPage() {
   const navigate = useNavigate();

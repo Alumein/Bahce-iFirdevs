@@ -1,7 +1,6 @@
 package com.bahceifirdevs.v01.web.dto;
 
 import jakarta.validation.constraints.*;
-
 import java.math.BigDecimal;
 
 public record ProductCreateRequest(
@@ -10,5 +9,7 @@ public record ProductCreateRequest(
     @NotNull @Positive BigDecimal priceTry,
     @NotNull @Min(0) Integer stock,
     @NotNull Long categoryId,
-    @Size(max = 255) String imageUrl
+    @Size(max = 255) String imageUrl,
+    @Size(max = 255) String imageUrl2, // YENİ
+    @Size(max = 255) String imageUrl3  // YENİ
 ) {}
