@@ -49,7 +49,7 @@ function App() {
         background: '#6D4C41', color: '#FFF', textAlign: 'center', padding: '8px', 
         fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px'
       }}>
-        🚚 <strong>5000 TL Üzeri Kargo Bedava!</strong> | Aynı Gün Teslimat
+         <strong>İstanbul içi özel kurye ile teslimat | 3500 TL üzerine teslimat ücretsiz!</strong> | Aynı Gün Teslimat
       </div>
 
       <header className="navbar" style={{ padding: '10px 0', background: '#F5F1E8', borderBottom: '1px solid #eee' }}>

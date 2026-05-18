@@ -138,7 +138,7 @@ export default function HomePage() {
               marginBottom: '20px', 
               textShadow: '0 4px 15px rgba(0,0,0,0.5)' 
             }}>
-              Cennet Bahçelerinin <br/> Dünyadaki Yansıması
+              Sevdiklerinizle En Özel Anlarınızda
             </h1>
             <p style={{ 
               fontSize: '1.4rem', 
@@ -147,8 +147,8 @@ export default function HomePage() {
               textShadow: '0 2px 10px rgba(0,0,0,0.5)',
               lineHeight: '1.6'
             }}>
-              En nadide çiçeklerle tasarladığımız "Bahçe-i Firdevs" koleksiyonu ile <br/>
-              sevdiklerinize bu dünyada cennetten bir esinti sunun.
+              Bahçe-i Firdevs koleksiyonu ruhunuza dokunan kokuları ve  <br/>
+              büyüleyici renkleriyle Cennet esintilerini evinize getiriyor.
             </p>
             <Link to="/shop" className="btn btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem', borderRadius: '0', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
               Koleksiyonu Keşfet

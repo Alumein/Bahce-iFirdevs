@@ -12,7 +12,7 @@ const statusMap = {
   PENDING: 'Beklemede',
   PAID: 'Ödendi (Hazırlanıyor)',
   PREPARING: 'Hazırlanıyor',
-  SHIPPED: 'Kargolandı',
+  SHIPPED: 'Gönderildi',
   DELIVERED: 'Teslim Edildi',
   CANCELED: 'İptal Edildi'
 };

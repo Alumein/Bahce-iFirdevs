@@ -347,12 +347,12 @@ export default function CheckoutPage() {
           
           {shippingCost > 0 && cartTotal < 5000 && (
              <div style={{marginTop:'10px', fontSize:'0.8rem', color:'green', textAlign:'center'}}>
-                🎉 {(5000 - cartTotal).toFixed(2)} TL daha eklersen kargo bedava!
+                🎉 {(5000 - cartTotal).toFixed(2)} TL daha eklersen teslimat bedava!
              </div>
           )}
           {shippingCost === 0 && (
              <div style={{marginTop:'10px', fontSize:'0.8rem', color:'green', textAlign:'center', fontWeight:'bold'}}>
-                🎉 Kargo Bedava!
+                🎉 Teslimat Bedava!
              </div>
           )}
         </div>

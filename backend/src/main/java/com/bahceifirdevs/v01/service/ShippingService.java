@@ -18,7 +18,7 @@ public class ShippingService {
     @Transactional(readOnly = true)
     public BigDecimal calculateShippingCost(BigDecimal cartTotal, String districtName) {
         // 1. Kural: 2500 TL ve üzeri ÜCRETSİZ KARGO
-        if (cartTotal.compareTo(new BigDecimal("5000")) >= 0) {
+        if (cartTotal.compareTo(new BigDecimal("3500")) >= 0) {
             return BigDecimal.ZERO;
         }
 
