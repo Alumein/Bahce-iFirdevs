@@ -859,4 +859,34 @@ h2, h3, h4 {
   /* Admin Paneli */
   .admin-header { flex-direction: column; gap: 15px; }
   .admin-tabs { width: 100%; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+
+  /* --- Ana Sayfa Video Banner (Mobil) --- */
+  /* Banner ve içindeki yazılar telefon ekranına sığsın diye küçültülür.
+     Masaüstündeki inline stiller korunur; burada !important ile ezilir. */
+  .home-hero {
+    height: 68vh !important;
+    min-height: 380px !important;
+    max-height: 560px !important;
+  }
+  .home-hero-content { padding: 0 16px !important; }
+  .home-hero-title {
+    font-size: 2rem !important;
+    line-height: 1.2 !important;
+    margin-bottom: 14px !important;
+  }
+  .home-hero-text {
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    max-width: 92% !important;
+    margin-bottom: 26px !important;
+  }
+  /* Paragraftaki zorunlu satır kırılmasını mobilde kaldır; metin doğal aksın */
+  .home-hero-br { display: none !important; }
+}
+
+/* Daha küçük telefonlar (dar ekran) için ek küçültme */
+@media (max-width: 400px) {
+  .home-hero { height: 62vh !important; }
+  .home-hero-title { font-size: 1.7rem !important; }
+  .home-hero-text { font-size: 0.95rem !important; }
 }

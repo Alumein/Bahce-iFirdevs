@@ -79,7 +79,7 @@ export default function HomePage() {
       <div style={{ paddingBottom: '50px' }}>
         
         {/* 2. VIDEO HERO BANNER (Tam Ekran) */}
-        <div style={{ 
+        <div className="home-hero" style={{ 
           position: 'relative',
           width: '100vw', 
           height: 'calc(100vh - 80px)', 
@@ -120,7 +120,7 @@ export default function HomePage() {
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 1 }}></div>
 
           {/* --- HERO METNİ --- */}
-          <div style={{ 
+          <div className="home-hero-content" style={{ 
             position: 'relative', 
             zIndex: 2, 
             height: '100%', 
@@ -132,7 +132,7 @@ export default function HomePage() {
             color: 'white',
             padding: '0 20px'
           }}>
-            <h1 style={{ 
+            <h1 className="home-hero-title" style={{
               fontSize: '4rem', 
               fontFamily: 'var(--font-heading)', 
               marginBottom: '20px', 
@@ -140,14 +140,14 @@ export default function HomePage() {
             }}>
               Sevdiklerinizle En Özel Anlarınızda
             </h1>
-            <p style={{ 
+            <p className="home-hero-text" style={{
               fontSize: '1.4rem', 
               maxWidth: '800px', 
               marginBottom: '40px', 
               textShadow: '0 2px 10px rgba(0,0,0,0.5)',
               lineHeight: '1.6'
             }}>
-              Bahçe-i Firdevs koleksiyonu ruhunuza dokunan kokuları ve  <br/>
+              Bahçe-i Firdevs koleksiyonu ruhunuza dokunan kokuları ve <br className="home-hero-br" />
               büyüleyici renkleriyle Cennet esintilerini evinize getiriyor.
             </p>
             <Link to="/shop" className="btn btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem', borderRadius: '0', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>

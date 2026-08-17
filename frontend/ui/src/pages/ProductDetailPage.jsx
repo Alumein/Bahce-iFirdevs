@@ -6,6 +6,7 @@ import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import ProductLegalInfo from '../components/ProductLegalInfo';
 
 const API_URL = 'https://bahce-ifirdevs.com.tr/api';
 
@@ -279,6 +280,9 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* --- YASAL BİLGİLER: Mesafeli Satış Sözleşmesi / İptal-İade / Teslimat --- */}
+      <ProductLegalInfo product={product} />
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '40px 0' }} />
 
